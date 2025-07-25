@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupForm = document.getElementById('signupForm');
     const showSignupLink = document.getElementById('showSignup');
     const showLoginLink = document.getElementById('showLogin');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const forgotPasswordModal = document.getElementById('forgotPasswordModal');
+    const closeForgotModal = document.getElementById('closeForgotModal');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 
     // Form switching
     showSignupLink.addEventListener('click', (e) => {
@@ -79,10 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
-    const recaptchaResponse = grecaptcha.getResponse();
-    if (!recaptchaResponse) {
-        alert('Please verify you are not a robot!');
-        return;
+    // Only check reCAPTCHA if grecaptcha is loaded and the widget is visible
+    if (typeof grecaptcha !== 'undefined' && loginForm.offsetParent !== null) {
+        const recaptchaResponse = grecaptcha.getResponse();
+        if (!recaptchaResponse) {
+            alert('Please verify you are not a robot!');
+            return;
+        }
     }
         
         const username = sanitizeInput(document.getElementById('loginUsername').value);
@@ -99,12 +106,37 @@ document.addEventListener('DOMContentLoaded', () => {
             
             alert('Login successful!');
             loginForm.reset();
-            grecaptcha.reset();
+            if (typeof grecaptcha !== 'undefined') grecaptcha.reset();
             // Redirect to dashboard or home page
         } else {
             alert('Invalid credentials!');
-            grecaptcha.reset();
+            if (typeof grecaptcha !== 'undefined') grecaptcha.reset();
         }
+    });
+
+    // Forgot Password Modal Logic
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        forgotPasswordModal.classList.remove('hidden');
+        document.getElementById('forgotEmail').focus();
+    });
+
+    closeForgotModal.addEventListener('click', () => {
+        forgotPasswordModal.classList.add('hidden');
+        forgotPasswordForm.reset();
+    });
+
+    forgotPasswordForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('forgotEmail').value.trim();
+        if (!email) {
+            alert('Please enter your email.');
+            return;
+        }
+        // Simulate sending reset link
+        alert('If an account with that email exists, a reset link has been sent.');
+        forgotPasswordModal.classList.add('hidden');
+        forgotPasswordForm.reset();
     });
 
     // Implement session check
