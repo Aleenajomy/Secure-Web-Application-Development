@@ -475,7 +475,7 @@
             
             const email = sanitizeInput(document.getElementById('loginEmail').value.trim());
             const password = document.getElementById('loginPassword').value;
-            const recaptchaResponse = grecaptcha.getResponse();
+            const recaptchaResponse = typeof grecaptcha !== 'undefined' ? grecaptcha.getResponse() : '';
             
             // Validation
             if (!validateEmail(email)) {
@@ -488,8 +488,9 @@
                 return;
             }
             
-            // Validate reCAPTCHA
-            if (!recaptchaResponse) {
+            // Validate reCAPTCHA (skip in development if not properly configured)
+            const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (!isDevelopment && !recaptchaResponse) {
                 showAlert('loginAlert', 'Please complete the reCAPTCHA verification', 'error');
                 return;
             }
@@ -530,18 +531,33 @@
                         grecaptcha.reset();
                     }, 1000);
                 } else {
-                    // Login failed
-                    showAlert('loginAlert', data.error || 'Login failed', 'error');
+                    // Login failed - show specific error message
+                    const errorMessage = data.error || 'Login failed';
+                    const errorDetails = data.details ? ` (${data.details})` : '';
+                    showAlert('loginAlert', errorMessage + errorDetails, 'error');
                     setLoading('loginBtn', false);
-                    // Reset reCAPTCHA
-                    grecaptcha.reset();
+                    // Reset reCAPTCHA if available
+                    if (typeof grecaptcha !== 'undefined' && grecaptcha.reset) {
+                        grecaptcha.reset();
+                    }
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showAlert('loginAlert', 'An error occurred during login. Please try again.', 'error');
+                
+                // Check if it's a network error
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showAlert('loginAlert', 'Cannot connect to server. Please ensure the server is running on port 3000.', 'error');
+                } else if (error.message.includes('NetworkError')) {
+                    showAlert('loginAlert', 'Network error. Please check your connection and try again.', 'error');
+                } else {
+                    showAlert('loginAlert', `Login error: ${error.message || 'Please try again.'}`, 'error');
+                }
+                
                 setLoading('loginBtn', false);
-                // Reset reCAPTCHA
-                grecaptcha.reset();
+                // Reset reCAPTCHA if available
+                if (typeof grecaptcha !== 'undefined' && grecaptcha.reset) {
+                    grecaptcha.reset();
+                }
             }
         });
 

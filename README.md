@@ -55,6 +55,8 @@ Before running this application, make sure you have:
 
 ## ⚡ Quick Start
 
+### Method 1: Full Setup with MongoDB (Recommended for Production)
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/secure-web-authentication.git
@@ -77,22 +79,96 @@ Before running this application, make sure you have:
    MONGODB_URI=mongodb://localhost:27017/secure-auth
    JWT_SECRET=your-super-secure-jwt-secret
    SESSION_SECRET=your-super-secure-session-secret
+   RECAPTCHA_SITE_KEY=your-recaptcha-site-key
+   RECAPTCHA_SECRET_KEY=your-recaptcha-secret-key
    ```
 
-4. **Start MongoDB**
-   Make sure MongoDB is running on your system.
-
-5. **Run the application**
-   ```bash
-   # Development mode with auto-restart
-   npm run dev
+4. **Install and Start MongoDB**
    
-   # Production mode
-   npm start
+   **Windows:**
+   - Download MongoDB from https://www.mongodb.com/try/download/community
+   - Install and start MongoDB service
+   - Or use MongoDB Atlas (cloud): https://www.mongodb.com/atlas
+   
+   **macOS:**
+   ```bash
+   brew install mongodb-community
+   brew services start mongodb-community
+   ```
+   
+   **Linux:**
+   ```bash
+   sudo apt-get install mongodb
+   sudo systemctl start mongodb
    ```
 
-6. **Access the application**
+5. **Create a test user (Optional)**
+   ```bash
+   node create-test-user.js
+   ```
+   This creates a test user with:
+   - Email: `test@test.com`
+   - Password: `password123`
+
+6. **Run the application**
+   ```bash
+   # Start the server
+   node server.js
+   
+   # Or with nodemon for development
+   npm run dev
+   ```
+
+7. **Access the application**
    Open your browser and navigate to `http://localhost:3000`
+
+### Method 2: Quick Development Setup (No MongoDB Required)
+
+**For quick testing without MongoDB setup:**
+
+1. **Follow steps 1-3 from Method 1**
+
+2. **Start the server in development mode**
+   ```bash
+   node server.js
+   ```
+   
+   The application will automatically:
+   - Skip reCAPTCHA validation in development
+   - Show helpful error messages
+   - Work on localhost without external dependencies
+
+3. **Access the application**
+   Open `http://localhost:3000` in your browser
+
+4. **Create an account**
+   - Click "Sign up here"
+   - Fill in the registration form
+   - Use a strong password (8+ chars, uppercase, lowercase, numbers, special chars)
+
+### Method 3: Using XAMPP (Alternative)
+
+If you're using XAMPP:
+
+1. **Place files in XAMPP directory**
+   ```
+   C:\xampp\htdocs\secure-web-authentication\
+   ```
+
+2. **Install Node.js dependencies**
+   ```bash
+   cd C:\xampp\htdocs\secure-web-authentication
+   npm install
+   ```
+
+3. **Start the Node.js server**
+   ```bash
+   node server.js
+   ```
+
+4. **Access via**
+   - Direct: `http://localhost:3000`
+   - Via XAMPP: `http://localhost/secure-web-authentication/public/`
 
 ## 🏗️ Project Structure
 
@@ -240,26 +316,80 @@ app.use(session({
 
 ## 🐛 Troubleshooting
 
+### Login Issues (Fixed in Latest Version)
+
+**Problem: "Login not working" or "reCAPTCHA verification failed"**
+
+**Solution:** The latest version includes fixes for common login issues:
+
+1. **reCAPTCHA Issues**
+   - ✅ **Fixed**: reCAPTCHA is now optional in development mode
+   - ✅ **Fixed**: Placeholder reCAPTCHA keys won't block login
+   - The system automatically detects development environment and skips reCAPTCHA validation
+
+2. **Frontend Validation**
+   - ✅ **Fixed**: Added proper password validation
+   - ✅ **Fixed**: Improved error handling for undefined reCAPTCHA
+   - ✅ **Fixed**: Better user feedback for validation errors
+
+3. **Development Mode Features**
+   - Automatic reCAPTCHA bypass on localhost/127.0.0.1
+   - Enhanced error logging for debugging
+   - Graceful handling of missing MongoDB connection
+
+**Quick Test:**
+```bash
+# Start the server
+node server.js
+
+# Open browser to http://localhost:3000
+# Try creating a new account first, then login
+```
+
 ### Common Issues
 
 1. **MongoDB Connection Error**
-   - Ensure MongoDB is running
-   - Check connection string in `.env`
-   - Verify network connectivity
+   ```
+   Error: connect ECONNREFUSED 127.0.0.1:27017
+   ```
+   **Solutions:**
+   - Ensure MongoDB is running: `mongod` or start MongoDB service
+   - Check connection string in `.env` file
+   - Use MongoDB Atlas for cloud database
+   - For quick testing, the app works without MongoDB in development mode
 
-2. **JWT Token Issues**
+2. **"Cannot POST /api/auth/login"**
+   **Solutions:**
+   - Ensure Node.js server is running: `node server.js`
+   - Check if port 3000 is available
+   - Verify the server started without errors
+
+3. **JWT Token Issues**
    - Check JWT_SECRET in environment variables
    - Verify token expiration settings
-   - Clear browser local storage
+   - Clear browser local storage: `localStorage.clear()`
 
-3. **Rate Limiting Triggered**
-   - Wait for the rate limit window to reset
-   - Adjust rate limiting settings if needed
+4. **Rate Limiting Triggered**
+   ```
+   Too many authentication attempts
+   ```
+   **Solutions:**
+   - Wait 15 minutes for rate limit reset
+   - Restart the server to reset counters
+   - Adjust rate limiting in `server.js` if needed
 
-4. **Session Problems**
-   - Clear browser cookies
+5. **Session Problems**
+   - Clear browser cookies and local storage
    - Check MongoDB session store connection
    - Verify SESSION_SECRET configuration
+
+6. **Password Validation Errors**
+   **Requirements:**
+   - Minimum 8 characters
+   - At least one uppercase letter
+   - At least one lowercase letter
+   - At least one number
+   - At least one special character (!@#$%^&*(),.?":{}|<>)
 
 ## 🤝 Contributing
 

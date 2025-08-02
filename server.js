@@ -83,10 +83,18 @@ app.use(session({
     }
 }));
 
-// MongoDB connection
+// MongoDB connection with error handling
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/secure-auth', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+})
+.then(() => {
+    console.log('✅ Connected to MongoDB successfully');
+})
+.catch((error) => {
+    console.error('❌ MongoDB connection error:', error.message);
+    console.log('⚠️  Server will continue running but authentication may not work properly');
+    console.log('💡 To fix: Install and start MongoDB, or use MongoDB Atlas');
 });
 
 // User Schema
@@ -327,33 +335,42 @@ app.post('/api/auth/login', validateInput, async (req, res) => {
             return res.status(400).json({ error: 'Please provide a valid email' });
         }
 
-        // Validate reCAPTCHA
-        if (!recaptchaResponse) {
-            return res.status(400).json({ error: 'reCAPTCHA verification is required' });
-        }
-
-        // Verify reCAPTCHA with Google
-        try {
-            const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-            const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY || 'your-recaptcha-secret-key';
-            
-            const recaptchaVerification = await axios.post(
-                recaptchaVerifyUrl,
-                null,
-                {
-                    params: {
-                        secret: recaptchaSecretKey,
-                        response: recaptchaResponse
-                    }
-                }
-            );
-
-            if (!recaptchaVerification.data.success) {
-                return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+        // Validate reCAPTCHA (skip in development if keys are not properly configured)
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        const hasValidRecaptchaKeys = process.env.RECAPTCHA_SECRET_KEY && 
+                                     process.env.RECAPTCHA_SECRET_KEY !== 'your-recaptcha-secret-key' &&
+                                     process.env.RECAPTCHA_SECRET_KEY !== '6LcwIpgrAAAAAEKpflDRUgLBaJ1WJRlJqOE99YAc';
+        
+        if (!isDevelopment || hasValidRecaptchaKeys) {
+            if (!recaptchaResponse) {
+                return res.status(400).json({ error: 'reCAPTCHA verification is required' });
             }
-        } catch (recaptchaError) {
-            console.error('reCAPTCHA verification error:', recaptchaError);
-            return res.status(500).json({ error: 'reCAPTCHA verification failed' });
+
+            // Verify reCAPTCHA with Google
+            try {
+                const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+                const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+                
+                const recaptchaVerification = await axios.post(
+                    recaptchaVerifyUrl,
+                    null,
+                    {
+                        params: {
+                            secret: recaptchaSecretKey,
+                            response: recaptchaResponse
+                        }
+                    }
+                );
+
+                if (!recaptchaVerification.data.success) {
+                    return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+                }
+            } catch (recaptchaError) {
+                console.error('reCAPTCHA verification error:', recaptchaError);
+                return res.status(500).json({ error: 'reCAPTCHA verification failed' });
+            }
+        } else {
+            console.log('Development mode: Skipping reCAPTCHA verification');
         }
 
         // Find user
@@ -388,12 +405,35 @@ app.post('/api/auth/login', validateInput, async (req, res) => {
     } catch (error) {
         console.error('Login error:', error);
         
+        // Handle specific error types
         if (error.message === 'Invalid credentials' || 
             error.message.includes('Account is temporarily locked')) {
             return res.status(401).json({ error: error.message });
         }
         
-        res.status(500).json({ error: 'Internal server error' });
+        // Handle MongoDB connection errors
+        if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
+            console.error('Database connection error during login');
+            return res.status(503).json({ 
+                error: 'Database connection error. Please try again later.',
+                details: 'MongoDB is not available'
+            });
+        }
+        
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                error: 'Validation error',
+                details: error.message
+            });
+        }
+        
+        // Generic error with more details in development
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        res.status(500).json({ 
+            error: 'Internal server error',
+            ...(isDevelopment && { details: error.message, stack: error.stack })
+        });
     }
 });
 
