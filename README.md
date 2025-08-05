@@ -1,4 +1,4 @@
-# 🔐 Secure Web Authentication System
+# 🔐 Secure User Authentication System
 
 A comprehensive, production-ready web application with secure authentication, implementing modern security best practices and protection against common web vulnerabilities.
 
